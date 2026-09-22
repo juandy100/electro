@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Electrodoméstico Virtual — Aire Acondicionado</title>
+  <style>
+    :root{ --bg:#f2f6fb; --card:#ffffff; --accent:#1e88e5; --muted:#6b7280; }
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; background:var(--bg); margin:0; padding:24px; color:#0f172a}
+    .wrap{display:grid; grid-template-columns: 1fr 340px; gap:20px; align-items:start; max-width:1100px; margin:0 auto}
+    .unit{background:var(--card); border-radius:12px; padding:20px; box-shadow:0 6px 18px rgba(16,24,40,0.06)}
+
+    /* Dibujo simple del aire acondicionado */
+    .ac-drawing{width:100%; height:220px; position:relative; display:flex; align-items:center; justify-content:center}
+    .ac-body{width:85%; height:120px; background:#e6eefc; border-radius:12px; position:relative; box-shadow: inset 0 -6px 18px rgba(0,0,0,0.04)}
+    .ac-logo{position:absolute; left:18px; top:12px; font-weight:700; color:var(--muted)}
+    .ac-display{position:absolute; right:18px; top:12px; width:92px; height:28px; background:#0b1223; color:#aee3ff; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:700; font-family:monospace}
+    .ac-vents{position:absolute; left:10px; right:10px; bottom:12px; height:40px; display:flex; gap:6px}
+    .vent{flex:1; background:linear-gradient(180deg,#cfdff8,#b7cef4); border-radius:6px; position:relative; overflow:hidden}
+    .vent:before{content:''; position:absolute; left:0; right:0; top:0; bottom:0; background:repeating-linear-gradient(90deg, rgba(0,0,0,0.06) 0 6px, transparent 6px 12px);}
+    .swing{position:absolute; left:50%; top:50%; width:36px; height:6px; background:#091426; border-radius:3px; transform-origin:center; transform:translate(-50%,-50%) rotate(0deg); transition:transform .3s linear}
+    .ac-on .swing{animation: sway 1s infinite ease-in-out}
+    @keyframes sway{0%{transform:translate(-50%,-50%) rotate(-6deg)}50%{transform:translate(-50%,-50%) rotate(6deg)}100%{transform:translate(-50%,-50%) rotate(-6deg)}}
+
+    /* Panel de estado & controles */
+    .status{display:flex; gap:12px; align-items:center; margin-top:16px}
+    .big{font-size:32px; font-weight:700; font-family:monospace}
+    .meta{color:var(--muted)}
+    .controls{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+    .btn{background:#f1f5f9; border:0; padding:10px 12px; border-radius:8px; cursor:pointer; min-width:76px; font-weight:600}
+    .btn.primary{background:var(--accent); color:white}
+    .btn.toggle{background:#fff; border:1px solid #e6eefc}
+
+    /* Control remoto (lado derecho) */
+    .remote{background:linear-gradient(180deg,#0b1223, #14203a); color:#fff; padding:18px; border-radius:14px}
+    .remote h3{margin:0 0 10px 0; font-size:18px}
+    .remote .screen{background:rgba(255,255,255,0.06); padding:10px; border-radius:8px; font-family:monospace; height:52px; display:flex; align-items:center; justify-content:space-between}
+    .r-buttons{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px}
+    .r-btn{background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.06); padding:10px; border-radius:8px; text-align:center; cursor:pointer}
+    .r-btn.big{grid-column:span 3}
+
+    /* Responsive */
+    @media (max-width:920px){.wrap{grid-template-columns:1fr;}.remote{margin-top:10px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="unit">
+      <h2>Aire acondicionado virtual</h2>
+      <div class="ac-drawing" id="acUnit">
+        <div class="ac-body" id="acBody">
+          <div class="ac-logo">MiAire™</div>
+          <div class="ac-display" id="acDisplay">OFF</div>
+          <div class="ac-vents">
+            <div class="vent"><div class="swing"></div></div>
+            <div class="vent"><div class="swing"></div></div>
+            <div class="vent"><div class="swing"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status">
+        <div>
+          <div class="big" id="tempRead">--°C</div>
+          <div class="meta" id="modeRead">Modo: -- | Vent: --</div>
+        </div>
+        <div style="margin-left:auto; display:flex; flex-direction:column; gap:8px">
+          <div style="font-size:12px; color:var(--muted)">Estado</div>
+          <div id="powerIndicator" style="width:14px; height:14px; border-radius:50%; background:#ef4444"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <!-- Los botones visuales: muchos, pero sólo 4 serán funcionales (Power, +Temp, -Temp, Modo) -->
+        <button class="btn primary" id="powerBtn">Encender / Apagar</button>
+        <button class="btn" id="tempUp">Temperatura +</button>
+        <button class="btn" id="tempDown">Temperatura -</button>
+        <button class="btn" id="modeBtn">Cambiar Modo</button>
+
+        <!-- Botones extra (no funcionales o de muestra) -->
+        <button class="btn toggle">Timer</button>
+        <button class="btn toggle">Swing</button>
+        <button class="btn toggle">Eco</button>
+        <button class="btn toggle">Sleep</button>
+      </div>
+    </div>
+
+    <aside class="remote unit">
+      <h3>Control remoto — Aire acondicionado</h3>
+      <div class="screen">
+        <div>
+          <div style="font-size:13px">Estado: <span id="scrPower">OFF</span></div>
+          <div style="font-size:13px">Temp: <span id="scrTemp">--°C</span></div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px; color:rgba(255,255,255,0.6)">Modo</div>
+          <div id="scrMode">--</div>
+        </div>
+      </div>
+
+      <div class="r-buttons" aria-label="botones-aire">
+        <div class="r-btn" id="rPower">Power</div>
+        <div class="r-btn" id="rTempUp">Temp +</div>
+        <div class="r-btn" id="rTempDown">Temp -</div>
+        <div class="r-btn" id="rMode">Modo</div>
+        <div class="r-btn">Fan</div>
+        <div class="r-btn">Eco</div>
+        <div class="r-btn big" id="rQuickCool">Quick Cool</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    const state = { powered: false, temp: 24, modeIndex: 0, modes: ['FRIO','CALOR','VENTILADOR','AUTO'] };
+    const acBody = document.getElementById('acBody');
+    const acDisplay = document.getElementById('acDisplay');
+    const tempRead = document.getElementById('tempRead');
+    const modeRead = document.getElementById('modeRead');
+    const powerIndicator = document.getElementById('powerIndicator');
+    const scrPower = document.getElementById('scrPower');
+    const scrTemp = document.getElementById('scrTemp');
+    const scrMode = document.getElementById('scrMode');
+
+    const powerBtn = document.getElementById('powerBtn');
+    const tempUp = document.getElementById('tempUp');
+    const tempDown = document.getElementById('tempDown');
+    const modeBtn = document.getElementById('modeBtn');
+
+    const rPower = document.getElementById('rPower');
+    const rTempUp = document.getElementById('rTempUp');
+    const rTempDown = document.getElementById('rTempDown');
+    const rMode = document.getElementById('rMode');
+    const rQuickCool = document.getElementById('rQuickCool');
+
+    function render(){
+      acDisplay.textContent = state.powered ? state.temp + '°C' : 'OFF';
+      tempRead.textContent = state.powered ? state.temp + '°C' : '--°C';
+      modeRead.textContent = `Modo: ${state.modes[state.modeIndex]} | Vent: ${state.powered ? 'ON' : 'OFF'}`;
+      scrPower.textContent = state.powered ? 'ON' : 'OFF';
+      scrTemp.textContent = state.temp + '°C';
+      scrMode.textContent = state.modes[state.modeIndex];
+      powerIndicator.style.background = state.powered ? '#34d399' : '#ef4444';
+      if(state.powered){ acBody.classList.add('ac-on'); } else { acBody.classList.remove('ac-on'); }
+    }
+
+    function togglePower(){ state.powered = !state.powered; render(); }
+    function increaseTemp(){ if(state.temp < 30) state.temp++; render(); }
+    function decreaseTemp(){ if(state.temp > 16) state.temp--; render(); }
+    function changeMode(){ state.modeIndex = (state.modeIndex + 1) % state.modes.length; render(); }
+
+    powerBtn.addEventListener('click', togglePower);
+    tempUp.addEventListener('click', increaseTemp);
+    tempDown.addEventListener('click', decreaseTemp);
+    modeBtn.addEventListener('click', changeMode);
+
+    rPower.addEventListener('click', ()=>{ togglePower(); flashButton(rPower); });
+    rTempUp.addEventListener('click', ()=>{ increaseTemp(); flashButton(rTempUp); });
+    rTempDown.addEventListener('click', ()=>{ decreaseTemp(); flashButton(rTempDown); });
+    rMode.addEventListener('click', ()=>{ changeMode(); flashButton(rMode); });
+    rQuickCool.addEventListener('click', ()=>{ state.powered = true; state.temp = 18; render(); flashButton(rQuickCool); });
+
+    function flashButton(el){
+      const orig = el.style.background;
+      el.style.background = 'rgba(255,255,255,0.12)';
+      setTimeout(()=> el.style.background = orig, 180);
+    }
+
+    render();
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+jyymmm,,
